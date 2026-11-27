@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /* ---------------------------------------------------------------------------
  * Text-to-speech (browser speechSynthesis)
@@ -29,6 +29,7 @@ function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undef
 
 export function useSpeechSynthesis() {
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [supported, setSupported] = useState(true);
 
   useEffect(() => {
@@ -47,9 +48,14 @@ export function useSpeechSynthesis() {
     return new Promise((resolve) => {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) return resolve();
       const synth = window.speechSynthesis;
-      synth.cancel();
+      // Chrome drops an utterance queued in the same tick as cancel(), so only cancel when needed.
+      const hadQueue = synth.speaking || synth.pending;
+      if (hadQueue) synth.cancel();
+      if (!voicesRef.current.length) voicesRef.current = synth.getVoices();
 
       const u = new SpeechSynthesisUtterance(text);
+      // Chrome garbage-collects unreferenced utterances mid-speech, so onend never fires.
+      utteranceRef.current = u;
       const voice = pickVoice(voicesRef.current);
       if (voice) u.voice = voice;
       u.lang = voice?.lang ?? "en-US";
@@ -62,6 +68,7 @@ export function useSpeechSynthesis() {
         done = true;
         clearInterval(keepAlive);
         clearTimeout(safety);
+        if (utteranceRef.current === u) utteranceRef.current = null;
         resolve();
       };
       u.onboundary = (e) => {
@@ -81,7 +88,10 @@ export function useSpeechSynthesis() {
       const words = text.split(/\s+/).length;
       const safety = setTimeout(finish, Math.max(8_000, words * 650 + 4_000));
 
-      synth.speak(u);
+      if (hadQueue) setTimeout(() => synth.speak(u), 60);
+      else synth.speak(u);
+      // Chrome sometimes starts the engine paused after a cancel().
+      if (synth.paused) synth.resume();
     });
   }, []);
 
@@ -89,7 +99,19 @@ export function useSpeechSynthesis() {
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
-  return { speak, cancel, supported };
+  // Stable identity: consumers put this in effect deps (e.g. cancel-on-unmount).
+  return useMemo(() => ({ speak, cancel, supported }), [speak, cancel, supported]);
+}
+
+/**
+ * Call synchronously inside a click handler before the first `speak()`.
+ * Safari (and Chrome without prior activation) only allow speech that was unlocked by a user gesture.
+ */
+export function primeSpeechSynthesis() {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(" ");
+  u.volume = 0;
+  window.speechSynthesis.speak(u);
 }
 
 /* ---------------------------------------------------------------------------

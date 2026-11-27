@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { primeSpeechSynthesis } from "@/hooks/useSpeech";
 import { LEVELS, TRACKS, type Level, type Track } from "@/lib/types";
 
 export interface SetupValues {
@@ -45,6 +46,8 @@ export default function Setup({ onStart }: { onStart: (v: SetupValues, durationS
   if (!voiceOk) warnings.push("This browser lacks speech recognition — use Chrome or Edge for voice, or type answers.");
 
   const start = async () => {
+    // Unlock speech synthesis while we still hold the click's user activation.
+    primeSpeechSynthesis();
     // Ask for the mic up front so the first answer isn't interrupted by a permission prompt.
     try {
       const s = await navigator.mediaDevices?.getUserMedia({ audio: true });

@@ -182,8 +182,10 @@ export default function InterviewRoom({ track, level, durationSec, autoSubmit, s
     return () => window.removeEventListener("keydown", onKey);
   }, [submitAnswer]);
 
-  // Cleanup on unmount.
-  useEffect(() => () => tts.cancel(), [tts]);
+  // Cleanup on unmount. Depend on the stable `cancel` only — this must not run on re-renders,
+  // or it silences speech every clock tick.
+  const { cancel: ttsCancel } = tts;
+  useEffect(() => () => ttsCancel(), [ttsCancel]);
 
   const endEarly = () => {
     tts.cancel();

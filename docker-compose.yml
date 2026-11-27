@@ -1,0 +1,37 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: interviewer
+      POSTGRES_PASSWORD: interviewer
+      POSTGRES_DB: interviewer
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U interviewer -d interviewer"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-haiku-5-5}
+      INTERVIEW_DURATION_SEC: ${INTERVIEW_DURATION_SEC:-600}
+      DATABASE_URL: postgres://interviewer:interviewer@db:5432/interviewer
+    ports:
+      - "3000:3000"
+    volumes:
+      # Edit markdown here and `docker compose restart app` to re-ingest.
+      - ./knowledge:/app/knowledge:ro
+
+volumes:
+  pgdata:

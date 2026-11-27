@@ -2,19 +2,16 @@
   "name": "interviewer",
   "version": "1.0.0",
   "private": true,
-  "description": "Voice AI interviewer (Java / ML) with an animated cat, RAG knowledge base and Claude Haiku",
+  "description": "Voice AI interviewer (Java / ML) with an animated cat and Claude Haiku",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "ingest": "tsx scripts/ingest.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",
-    "@huggingface/transformers": "^4.3.2",
     "next": "^16.4.6",
-    "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zod": "^4.6.7"
@@ -24,10 +21,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.7",
-    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.3",
     "@types/react-dom": "^19.3.0",
-    "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   }
 }

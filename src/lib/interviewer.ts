@@ -2,7 +2,7 @@ import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import { parseJSON } from "./claude";
 import { FEEDBACK_SYSTEM_PROMPT, INTERVIEWER_SYSTEM_PROMPT } from "./prompts";
-import { answeredPairs, formatChunks, studyNotes, type TurnContext } from "./rag";
+import { answeredPairs, type TurnContext } from "./topics";
 import {
   ANSWER_GRADES,
   TRACKS,
@@ -17,7 +17,6 @@ import {
 } from "./types";
 
 const MAX_FOLLOW_UPS = 2;
-const NOTE_CHARS = 700; // per knowledge-base chunk in a turn prompt (keeps voice turns fast and cheap)
 
 function fmtTime(sec: number): string {
   const s = Math.max(0, Math.round(sec));
@@ -86,13 +85,6 @@ function buildTurnMessages(input: TurnInput, mode: Mode): Anthropic.MessageParam
     .filter(Boolean)
     .join("\n");
 
-  const notes =
-    mode === "close"
-      ? ""
-      : [...ctx.followUpChunks, ...ctx.nextTopicChunks].length
-        ? formatChunks([...ctx.followUpChunks, ...ctx.nextTopicChunks], NOTE_CHARS)
-        : "";
-
   const messages: Anthropic.MessageParam[] = [
     { role: "user", content: "[The candidate has joined the voice call.]" },
   ];
@@ -108,7 +100,7 @@ function buildTurnMessages(input: TurnInput, mode: Mode): Anthropic.MessageParam
     }
   }
 
-  const tail = `<interview_state>\n${state}\n</interview_state>\n${notes ? `<knowledge_base>\n${notes}\n</knowledge_base>\n` : ""}${instruction}`;
+  const tail = `<interview_state>\n${state}\n</interview_state>\n${instruction}`;
   const last = messages[messages.length - 1];
   if (last.role === "user" && typeof last.content === "string") last.content = `${last.content}\n\n${tail}`;
   else messages.push({ role: "user", content: tail });
@@ -218,10 +210,6 @@ export async function generateFeedback(input: {
     study_plan: z.array(z.string()).min(1),
   });
 
-  // RAG: reference notes for topics that went less well, to ground the study plan.
-  const weakTopics = topicNames.filter((t) => mean(byTopic.get(t)!) < 7);
-  const notes = await studyNotes(input.track, weakTopics);
-
   const user = `Role: ${TRACKS[input.track]}, declared level: ${input.level}, duration ${fmtTime(input.elapsedSec)}.
 Overall result (already decided): ${overall.toFixed(1)}/10, ${levelFor(overall, input.level)}.
 
@@ -232,11 +220,7 @@ Write the feedback JSON:
 - strengths: only from answers graded good or strong. If there are none, mention honest communication or partial knowledge you actually saw.
 - improvements: from answers graded partial, weak or no_answer — name the concept that was missing.
 - topics: one short comment for each of these topics: ${topicNames.join(", ")}.
-- study_plan: concrete concepts to study, most important first.${
-    notes.length
-      ? `\n\nReference notes for the study plan only (never use them as evidence of what the candidate knows):\n${formatChunks(notes, 600)}`
-      : ""
-  }`;
+- study_plan: concrete concepts to study, most important first.`;
 
   const out = await parseJSON({
     system: FEEDBACK_SYSTEM_PROMPT,

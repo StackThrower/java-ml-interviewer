@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { nextInterviewerTurn } from "@/lib/interviewer";
 import { DURATION_SEC, errorResponse, parseInterviewBody } from "@/lib/http";
-import { buildTurnContext } from "@/lib/rag";
+import { buildTurnContext } from "@/lib/topics";
 import type { TurnResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
   try {
     const { track, level, transcript, elapsedSec, timeUp } = parsed;
-    const ctx = await buildTurnContext(track, level, transcript);
+    const ctx = buildTurnContext(track, transcript);
     const turn = await nextInterviewerTurn({
       track,
       level,

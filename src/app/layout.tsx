@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Whiskers — AI Voice Interviewer",
-  description: "Voice technical interviews for Java and ML engineers, powered by Claude Haiku and RAG.",
+  description: "Voice technical interviews for Java and ML engineers, powered by Claude Haiku.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

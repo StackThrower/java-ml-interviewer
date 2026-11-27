@@ -14,7 +14,6 @@ interface Health {
   anthropicKeyConfigured?: boolean;
   model?: string;
   durationSec?: number;
-  knowledgeBase?: Record<string, number>;
   error?: string;
 }
 
@@ -40,11 +39,9 @@ export default function Setup({ onStart }: { onStart: (v: SetupValues, durationS
   }, []);
 
   const durationSec = health?.durationSec ?? 600;
-  const kbCount = health?.knowledgeBase?.[track] ?? 0;
   const warnings: string[] = [];
-  if (health && !health.ok) warnings.push(`Backend not ready: ${health.error ?? "database unavailable"}`);
+  if (health && !health.ok) warnings.push(`Backend not ready: ${health.error ?? "unavailable"}`);
   if (health && health.anthropicKeyConfigured === false) warnings.push("ANTHROPIC_API_KEY is not set on the server.");
-  if (health?.ok && kbCount === 0) warnings.push("Knowledge base is empty — run `npm run ingest`.");
   if (!voiceOk) warnings.push("This browser lacks speech recognition — use Chrome or Edge for voice, or type answers.");
 
   const start = async () => {
